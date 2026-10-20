@@ -83,7 +83,7 @@ class GEM_OT_generate(bpy.types.Operator):
         self._key = uuid.uuid4().hex
         self._scene = context.scene
         self._start = props.start_frame
-        self._heading = props.heading
+        self._rotation_degrees = props.rotation_degrees
         _workers[self._key] = (self._cancel, context.scene.as_pointer())
         props.busy, props.error, props.job_id = True, "", ""
         props.status, props.progress = "准备上传", 0.
@@ -125,7 +125,7 @@ class GEM_OT_generate(bpy.types.Operator):
                     if context.scene != self._scene:
                         raise RuntimeError("当前场景已切换，请切回原场景并使用“导入动作 JSON”导入下载结果：" + item[1])
                     props.status = "导入动作"
-                    obj = import_motion(item[1], context, self._start, self._heading)
+                    obj = import_motion(item[1], context, self._start, self._rotation_degrees)
                     props.status, props.progress = "已导入：" + obj.name, 1.
                     self.report({"INFO"}, "GEM 动作已导入")
                     self.finish(context)
@@ -180,7 +180,7 @@ class GEM_OT_import_motion(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         try:
             props = context.scene.gem_x_bridge
-            import_motion(self.filepath, context, props.start_frame, props.heading)
+            import_motion(self.filepath, context, props.start_frame, props.rotation_degrees)
             return {"FINISHED"}
         except Exception as exc:
             self.report({"ERROR"}, str(exc))

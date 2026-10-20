@@ -30,7 +30,7 @@ class GEM_PT_main(bpy.types.Panel):
         settings.prop(props, "postprocess")
         settings.separator()
         settings.prop(props, "start_frame")
-        settings.prop(props, "heading")
+        settings.prop(props, "rotation_degrees")
         settings.label(text="保留项目帧率，按时间导入", icon="TIME")
         settings.operator("gem_x.generate", icon="PLAY")
         if props.busy:

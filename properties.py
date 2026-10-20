@@ -13,10 +13,9 @@ class GEM_Settings(bpy.types.PropertyGroup):
     max_edge: IntProperty(name="最长边像素", default=720, min=256, max=1920)
     seed: IntProperty(name="随机种子", default=42, min=0)
     postprocess: BoolProperty(name="官方动作后处理", default=True)
-    start_frame: IntProperty(name="起始帧", default=1, min=0)
-    heading: EnumProperty(name="起始朝向", items=[
-        ("FRONT", "正前方（−Y）", "将整段动作的首帧身体朝向对齐 Blender −Y，保留后续转身和位移"),
-        ("ORIGINAL", "保留原始朝向", "只转换坐标轴，保留 GEM 输出的世界朝向")], default="FRONT")
+    start_frame: IntProperty(name="起始帧", default=0, min=0)
+    rotation_degrees: FloatProperty(name="旋转角度（°）", default=180., soft_min=-180., soft_max=180.,
+        description="整段动作绕世界原点的 Z 轴额外旋转，保留原始侧向和转身；180° 翻转 X/Y，0° 保留原始朝向")
     status: StringProperty(default="未连接", options={"SKIP_SAVE"})
     error: StringProperty(default="", options={"SKIP_SAVE"})
     job_id: StringProperty(default="", options={"SKIP_SAVE"})

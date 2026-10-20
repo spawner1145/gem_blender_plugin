@@ -6,36 +6,10 @@ import bpy
 from mathutils import Matrix, Vector
 
 
-def heading_alignment(names, rest, frames, mode):
-    """One rigid yaw for the whole clip; leave the bind pose and later turns intact."""
-    if mode == "ORIGINAL":
-        return Matrix.Identity(4), 0.0
-    if mode != "FRONT":
-        raise ValueError("未知的起始朝向模式")
-    if "Hips" not in names:
-        return Matrix.Identity(4), 0.0
-    hip = names.index("Hips")
-    # Joint matrices include SOMA's joint orient; remove the bind rotation
-    # before using its anatomical +Z forward vector.
-    delta = Matrix(frames[0][hip]).to_quaternion() @ Matrix(rest[hip]).to_quaternion().inverted()
-    forward = delta @ Vector((0, 0, 1))
-    if math.hypot(forward.x, forward.z) < 1e-5:
-        # A vertical pelvis has no horizontal heading. Try the shoulder line.
-        if not all(n in names for n in ("LeftShoulder", "RightShoulder")):
-            return Matrix.Identity(4), 0.0
-        left = Matrix(frames[0][names.index("LeftShoulder")]).translation
-        right = Matrix(frames[0][names.index("RightShoulder")]).translation
-        forward = (left - right).cross(Vector((0, 1, 0)))
-        if math.hypot(forward.x, forward.z) < 1e-5:
-            return Matrix.Identity(4), 0.0
-    angle = -math.atan2(forward.x, forward.z)
-    pivot = Matrix(frames[0][hip]).translation
-    pivot.y = 0
-    align = Matrix.Translation(pivot) @ Matrix.Rotation(angle, 4, "Y") @ Matrix.Translation(-pivot)
-    return align, angle
-
-
-def import_motion(filepath, context, start_frame=1, heading="FRONT"):
+def import_motion(filepath, context, start_frame=0, rotation_degrees=180.0):
+    rotation_degrees = float(rotation_degrees)
+    if not math.isfinite(rotation_degrees):
+        raise ValueError("旋转角度必须是有限数值")
     motion = json.loads(Path(filepath).read_text("utf-8"))
     if motion.get("schema") != "gem-soma-motion-v1" or motion.get("unit") != "meters" or motion.get("up_axis") != "Y":
         raise ValueError("不支持的 GEM 动作格式")
@@ -61,7 +35,9 @@ def import_motion(filepath, context, start_frame=1, heading="FRONT"):
     # SOMA Y-up -> Blender Z-up, proper rotation (no reflection).
     convert = Matrix.Rotation(math.pi / 2, 4, "X")
     inverse = convert.inverted()
-    alignment, heading_angle = heading_alignment(names, rest, frames, heading)
+    # A constant yaw about the world origin, independent of the clip's first
+    # pose. Conjugating Y-up by 'convert' gives the same yaw about Blender Z.
+    alignment = Matrix.Rotation(math.radians(rotation_degrees % 360.0), 4, "Y")
     rest_m = [convert @ Matrix(mat) @ inverse for mat in rest]
     rest_inv = [mat.inverted() for mat in rest_m]
     children = [[] for _ in names]
@@ -138,8 +114,7 @@ def import_motion(filepath, context, start_frame=1, heading="FRONT"):
         obj["gem_timeline_fps"] = scene_fps
         obj["gem_start_frame"] = start_frame
         obj["gem_frames"] = len(frames)
-        obj["gem_heading_mode"] = heading
-        obj["gem_heading_degrees"] = math.degrees(heading_angle)
+        obj["gem_rotation_degrees"] = rotation_degrees
         scene.frame_set(start_frame)
         return obj
     except Exception:
